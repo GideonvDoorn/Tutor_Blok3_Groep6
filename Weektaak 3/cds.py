@@ -1,6 +1,6 @@
 from translation import aa_translating_codons, codon_dict
 
-class cds:
+class CDS:
 
     def __init__(self, header, sequence):
         self.__header = header
@@ -18,10 +18,22 @@ class cds:
 
     def get_gene_name(self):
 
-        gene_index = self.__header.index("[gene=")
+        """ Extracts gene name from header"""
+
+        end_index = 0
+        try:
+            gene_index = self.__header.index("[gene=")
+            end_index = len("[gene=")
+        except ValueError:
+
+            try:
+                gene_index = self.__header.index("[locus_tag=")
+                end_index = len("[locus_tag=")
+            except ValueError:
+                return "Fumerate Hydratase"
         header_cut = self.__header[gene_index :]
 
-        return header_cut[len("[gene=") : header_cut.index("]")]
+        return header_cut[end_index : header_cut.index("]")]
 
     def is_env_protein(self):
         return "[gene=env]" in self.__header
@@ -49,6 +61,10 @@ class cds:
 
     def __calc_codon_frequencies(self):
 
+        """ Returns list of AACodonFrequency objects,
+        that hold amino acid and corresponding codon + number of occurrences
+         in sequence """
+
         frequencies = []
 
         for codon in self.get_codons():
@@ -63,7 +79,7 @@ class cds:
 
 
             if not aa_registered:
-                new_entry = codon_data(aa_abr, aa_translating_codons[aa_abr])
+                new_entry = AACodonFrequency(aa_abr, aa_translating_codons[aa_abr])
                 new_entry.incr_codon_freq(codon)
                 frequencies.append(new_entry)
 
@@ -73,7 +89,7 @@ class cds:
         return f"{self.__header}{self.__sequence}\n"
 
 
-class codon_data():
+class AACodonFrequency():
 
     """ Holds amino acid name and codon frequencies"""
 
@@ -90,6 +106,17 @@ class codon_data():
 
     def codon_translates(self, codon):
         return codon in self.__codons
+
+    def get_freq_dict(self):
+        return self.__codon_frequencies
+
+    def get_total_codons(self):
+
+        total = 0
+        for freq in self.__codon_frequencies.values():
+            total += freq
+
+        return total
 
     def incr_codon_freq(self, codon, incr = 1):
 

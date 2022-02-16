@@ -1,7 +1,8 @@
 # Tutor weektaak 3 - groep 6
 # Codon bias
 
-from cds import cds
+from cds import CDS
+from plotter import Plotter
 from translation import codon_dict
 
 def get_sequences_from_file(file_name):
@@ -35,13 +36,13 @@ def get_sequences_from_file(file_name):
         if line.startswith(">"):
             header = line
             if sequence != "":
-                sequences.append(cds(header, sequence))
+                sequences.append(CDS(header, sequence.upper()))
                 sequence = ""
         else:
             sequence += line[:-1]
 
 
-    sequences.append(cds(header, sequence))
+    sequences.append(CDS(header, sequence.upper()))
 
     file.close()
 
@@ -49,9 +50,13 @@ def get_sequences_from_file(file_name):
 
 def print_codon_frequency(cds_objects):
 
+    """
+    print codon frequencies from a list of CDS objects
+    """
+
     for seq in cds_objects:
         print("-" * 150)
-        print(seq.get_gene_name())
+        print(f"Gene: {seq.get_gene_name()}")
         print()
 
         for codon_freq in seq.get_codon_frequencies():
@@ -60,10 +65,69 @@ def print_codon_frequency(cds_objects):
         print()
 
 
+def plot_all_charts_for_cds(plt, cds, organism, gene):
+
+    #plt.plot_stacked_bar(cds.get_codon_frequencies(), organism, gene)
+    #plt.plot_stacked_bar(cds.get_codon_frequencies(), organism, gene, True)
+    plt.plot_nested_pie_from_dict(cds.get_codon_frequencies(), organism, gene)
+
+
 if __name__ == '__main__':
 
     # Paths to sequences
-    hiv1_path = "CDS sequenties/HIV-1 coding sequence nucleotide.txt"
-    hiv1_coding_sequences = get_sequences_from_file(hiv1_path)
+    human_path = "CDS sequenties/Human FH.fasta"
+    plant_path = "CDS sequenties/Arabidopsis thaliana FUM1.fasta"
+    bact1_path = "CDS sequenties/Treponema caldarium FUM.fasta"
+    bact2_path = "CDS sequenties/Yersinia pestis FumA.fasta"
 
-    print_codon_frequency(hiv1_coding_sequences)
+    hiv1_path = "CDS sequenties/HIV-1 coding sequence nucleotide.txt"
+    hiv2_path = "CDS sequenties/HIV-2 coding sequence nucleotide.txt"
+    SIV1_path = "CDS sequenties/SIV-1 coding sequence nucleotide.txt"
+    SIV2_path = "CDS sequenties/SIV-2 coding sequence nucleotide.txt"
+
+    # Get sequences from files
+    human_coding_sequences = get_sequences_from_file(human_path)
+    plant_coding_sequences = get_sequences_from_file(plant_path)
+    bact1_coding_sequences = get_sequences_from_file(bact1_path)
+    bact2_coding_sequences = get_sequences_from_file(bact2_path)
+
+    hiv1_coding_sequences = get_sequences_from_file(hiv1_path)
+    hiv2_coding_sequences = get_sequences_from_file(hiv2_path)
+    siv1_coding_sequences = get_sequences_from_file(SIV1_path)
+    siv2_coding_sequences = get_sequences_from_file(SIV2_path)
+
+    plt = Plotter()
+
+    # Plot human
+    for cds in human_coding_sequences:
+        plot_all_charts_for_cds(plt, cds, "Human", cds.get_gene_name())
+
+    # Plot plant
+    for cds in plant_coding_sequences:
+        plot_all_charts_for_cds(plt, cds, "Arabidopsis thaliana", cds.get_gene_name())
+
+    # Plot bact 1
+    for cds in bact1_coding_sequences:
+        plot_all_charts_for_cds(plt, cds, "Treponema caldarium", cds.get_gene_name())
+
+    # Plot bact 2
+    for cds in bact2_coding_sequences:
+        plot_all_charts_for_cds(plt, cds, "Yersinia pestis", cds.get_gene_name())
+
+    # Plot HIV-1
+    for cds in hiv1_coding_sequences:
+        plot_all_charts_for_cds(plt, cds, "HIV-1", cds.get_gene_name())
+
+    # Plot HIV-2
+    for cds in hiv2_coding_sequences:
+        plot_all_charts_for_cds(plt, cds, "HIV-2", cds.get_gene_name())
+
+    # Plot SIV-1
+    for cds in siv1_coding_sequences:
+        plot_all_charts_for_cds(plt, cds, "SIV-1", cds.get_gene_name())
+
+    # Plot SIV-2
+    for cds in siv2_coding_sequences:
+        plot_all_charts_for_cds(plt, cds, "SIV-2", cds.get_gene_name())
+
+
