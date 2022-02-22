@@ -3,8 +3,21 @@ import math
 import matplotlib.pyplot as plt
 import pandas as pd
 
+#
+from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
+
+import translation
+
 
 class Plotter:
+
+    # Define amino acid label colors
+    aa_colors = {"Ala": "indianred", "Arg": "lavender", "Asn": "royalblue", "Asp": "blueviolet", "Cys": "darkmagenta",
+                 "Gln": "goldenrod", "Glu": "deeppink", "Gly": "salmon", "His": "olivedrab", "Ile": "peru",
+                 "Leu": "darkorchid", "Lys": "thistle", "Met": "darkseagreen", "Phe": "slateblue",
+                 "Pro": "aquamarine", "Ser": "dimgray", "Stop": "darkgreen", "Thr": "lightyellow", "Trp": "rosybrown",
+                 "Tyr": "cadetblue", "Val": "darkorange"}
 
     def __init__(self):
         pd.set_option("display.max_rows", 200, "display.max_columns",
@@ -25,6 +38,8 @@ class Plotter:
 
         # Dictionary to hold codon data
         _dict = {}
+        # List to hold totals
+        totals = []
         for obj in codon_data:
 
             # Get copy of the codon frequencies
@@ -40,13 +55,27 @@ class Plotter:
 
             # Add frequency to corresponding amino acid
             _dict[obj.get_abr()] = freq_dict
+            totals.append(sum(freq_dict.values()))
+
+
+
 
         # Make pandas dataframe using created _dict
         df = pd.DataFrame(_dict)
         df = df.fillna(0)
         df = df.transpose()
+        df["Total"] = totals
 
-        #print(df)
+        # # Add empty amino acids not translated by sequence
+        # all_aa = list(translation.aa_translating_codons.keys())
+        # for aa in all_aa:
+        #
+        #     if aa not in list(df.index):
+        #         df.loc[len(df)] = [0.00001] * len(df.columns)
+        #         df = df.rename(index = lambda x: aa)
+
+
+        #(df)
         return df
 
     def plot_stacked_bar(self, codon_data, organism, gene, by_proportion=False):
@@ -113,12 +142,23 @@ class Plotter:
 
         return colors
 
+    def generate_aa_colours(self, aa_list):
+
+        colors = []
+        for i in range(len(aa_list)):
+            colors.append(self.aa_colors[aa_list[i]])
+
+        return colors
+
     def plot_nested_pie_from_dict(self, codon_data, organism, gene):
 
         # Convert data into dataframe
-        df = self.convert_aa_data_to_df(codon_data)
+        df = self.convert_aa_data_to_df(codon_data, True)
+        df = df.sort_index()
+        df = df.drop('Total', 1)
+        print(df)
         row_names = list(df.index)
-        columns_names = df.columns
+        column_names = df.columns
 
         # Create inner dictionary
         inner_dict = {}
@@ -132,59 +172,99 @@ class Plotter:
 
             inner_dict[row_names[i]] = total
 
-        colors = []
+        # Create outer dictionary
+        codon_frequencies = {}
 
-        # Create outer lists [codons] [frequencies]
-        codons = df.columns
-        codon_frequencies = []
+        for i in range(len(row_names)):
 
-        for i in range(len(columns_names)):
+            row_vals = df.iloc[i, :].tolist()
 
-            row_vals = df.iloc[:, i].tolist()
 
-            total = 0
-            for val in row_vals:
-                total += val
+            inner_freqs = {}
+            for j in range(len(row_vals)):
+                if row_vals[j] > 0:
+                    inner_freqs[column_names[j]] = row_vals[j]
 
-            codon_frequencies.append(total)
+            inner_total = sum(list(inner_freqs.values()))
+            temp_dict = {}
+            for key in inner_freqs.keys():
+                percentage = round(inner_freqs[key] / inner_total * 100)
+                new_key = f"{key} {percentage}%"
+                temp_dict[new_key] = inner_freqs[key]
 
+            inner_freqs = temp_dict
+
+
+
+            inner_freqs = dict(sorted(inner_freqs.items(), key=lambda item: item[1]))
+            codon_frequencies.update(inner_freqs)
+
+        # Generate colors for aa wedges
+        aa_colors = self.generate_aa_colours(list(inner_dict.keys()))
         # Generate alternating colors for codon labels
-        colors = self.generate_color_list(len(codons))
+        codon_colors = self.generate_color_list(len(column_names))
 
         # Plot pie circles
-        codon_patches, codon_texts = plt.pie(codon_frequencies, labels=codons,
+        codon_patches, codon_texts = plt.pie(codon_frequencies.values(), labels=codon_frequencies.keys(),
                                              startangle=90, frame=True,
-                                             colors=colors, labeldistance=1.1,
+                                             colors=codon_colors, labeldistance=1.1,
                                              wedgeprops=dict(width=0.3,
-                                                             edgecolor='w'))
+                                                             edgecolor='w'),
+                                             rotatelabels=270)
         aa_patches, aa_texts = plt.pie(inner_dict.values(),
                                        labels=inner_dict.keys()
                                        , radius=0.7, startangle=90,
+                                       colors=aa_colors,
                                        labeldistance=0.7,
                                        wedgeprops=dict(width=0.3,
-                                                       edgecolor='w'))
+                                                       edgecolor='w'),
+                                       rotatelabels=270)
 
-        for text in aa_texts:
-            text.set_fontsize(8)
 
-        # Move special text
-        aa_texts[-1]._y -= 0.1
-        aa_texts[-1]._x -= 0.05
-        aa_texts[-2]._x -= 0.05
-        aa_texts[-3]._x -= 0.05
-        aa_texts[0]._x += 0.05
+
+        # Set label properties by looping over the aa text objects
+        for i in range(len(aa_texts)):
+
+
+
+            # If aa frequency is small move text outside pie
+            aa_sum = sum(list(inner_dict.values()))
+            aa_value = list(inner_dict.values())[i]
+
+            if aa_value / aa_sum < 0.01:
+                # Set AA font size
+                aa_texts[i].set_fontsize(5)
+
+                # Text coordinates
+                x = aa_texts[i]._x
+                y = aa_texts[i]._y
+
+                # Set new coords
+                aa_texts[i]._x = x - x /1.8
+                aa_texts[i]._y = y - y /1.8
+            elif aa_value / aa_sum > 0.2:
+                # Set AA font size
+                aa_texts[i].set_fontsize(7)
+            else:
+                # Set AA font size
+                aa_texts[i].set_fontsize(5)
+
+
+
+
 
         # Set label properties by looping over the codon text objects
         angle = 0
+        frequency_values = list(codon_frequencies.values())
         for i in range(len(codon_texts)):
 
             # Hide codons with frequency of 0
-            if codon_frequencies[i] == 0:
+            if frequency_values[i] == 0:
                 codon_texts[i].set(visible=False)
                 continue
 
             # Set font size
-            codon_texts[i].set_fontsize(8)
+            codon_texts[i].set_fontsize(6)
 
             # Text coordinates
             x = codon_texts[i]._x
@@ -197,7 +277,7 @@ class Plotter:
             # plt.plot([x,radial_x],[y,radial_y])
 
             # increment angle based on codon position
-            angle += 360 / sum(codon_frequencies) * codon_frequencies[i]
+            angle += 360 / sum(frequency_values) * frequency_values[i]
 
             # Even indexed codons should have different appearance from uneven indexed codons
             if i % 2 == 0:
@@ -208,8 +288,8 @@ class Plotter:
                 codon_texts[i]._alpha = 0.7
 
                 # Calc new coords
-                new_x = x + (radial_x - x) / 2
-                new_y = y + (radial_y - y) / 2
+                new_x = x + (radial_x - x) / 1.7
+                new_y = y + (radial_y - y) / 1.7
 
                 # Set new coords
                 codon_texts[i]._y = new_y
@@ -217,9 +297,9 @@ class Plotter:
 
                 # Plot label line
                 plt.plot([codon_texts[i]._x,
-                          codon_texts[i]._x - codon_texts[i]._x / 2.9],
+                          codon_texts[i]._x - codon_texts[i]._x / 2.7],
                          [codon_texts[i]._y,
-                          codon_texts[i]._y - codon_texts[i]._y / 2.9],
+                          codon_texts[i]._y - codon_texts[i]._y / 2.7],
                          color=(
                          1 / 255 * 255, 1 / 255 * 102, 1 / 255 * 102, 0.2))
 
@@ -232,8 +312,8 @@ class Plotter:
                 codon_texts[i]._alpha = 0.5
 
                 # Calc new coords
-                new_x = x + (radial_x - x) / 4
-                new_y = y + (radial_y - y) / 4
+                new_x = x + (radial_x - x) / 100
+                new_y = y + (radial_y - y) / 100
 
                 # Set new coords
                 codon_texts[i]._y = new_y
@@ -241,25 +321,34 @@ class Plotter:
 
                 # Plot label line
                 plt.plot([codon_texts[i]._x,
-                          codon_texts[i]._x - codon_texts[i]._x / 4.2],
+                          codon_texts[i]._x - codon_texts[i]._x / 13],
                          [codon_texts[i]._y,
-                          codon_texts[i]._y - codon_texts[i]._y / 4.2],
+                          codon_texts[i]._y - codon_texts[i]._y / 13],
                          color=(
                          1 / 255 * 153, 1 / 255 * 51, 1 / 255 * 255, 0.2))
 
-        # Set special text properties
-        codon_texts[0]._y += 0.1
 
         # Make it a donut
-        centre_circle = plt.Circle((0, 0), 0.4, color='white', linewidth=0)
+        centre_circle = plt.Circle((0, 0), 0.4, color="beige", linewidth=0)
         fig = plt.gcf()
         fig.gca().add_artist(centre_circle)
         plt.axis('equal')
 
         # Other properties
         plt.tight_layout()
-        fig.suptitle(f'Codon Frequency\nOrg: {organism[:8]}... '
-                     f'\nGene: {gene}', ha="left", x=0)
+        # fig.suptitle(f'Codon Frequency\nOrg: {organism[:8]}... '
+        #              f'\nGene: {gene[:8]}...', ha="left", x=0)
+
+        # plt.legend(row_names, bbox_to_anchor=([0.2, 1, 0, 0]), ncol=2, loc="right")
+        # plt.tight_layout()
 
 
         plt.show()
+        fig.savefig(f"Pie_{organism}_{gene}", dpi=1000, transparent=True)
+
+    def randrange(self, n, vmin, vmax):
+        '''
+        Helper function to make an array of random numbers having shape (n, )
+        with each number distributed Uniform(vmin, vmax).
+        '''
+        return (vmax - vmin) * np.random.rand(n) + vmin

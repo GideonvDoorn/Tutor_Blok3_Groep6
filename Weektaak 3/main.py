@@ -48,6 +48,21 @@ def get_sequences_from_file(file_name):
 
     return sequences
 
+def get_env_cds(cds_objects):
+
+    for cds in cds_objects:
+        if cds.is_env_protein():
+            return cds
+
+def combine_cds_sequences(cds_objects):
+
+    new_sequence = ""
+    for cds in cds_objects:
+        new_sequence += cds.get_sequence()
+
+    return CDS("[gene=combined]", new_sequence)
+
+
 def print_codon_frequency(cds_objects):
 
     """
@@ -98,6 +113,10 @@ if __name__ == '__main__':
 
     plt = Plotter()
 
+    # plt.plot_stacked_bar(human_coding_sequences[0].get_codon_frequencies(), "Human", "FUM")
+    # plt.plot_stacked_bar(human_coding_sequences[0].get_codon_frequencies(), "Human", "FUM", True)
+    # plt.plot_nested_pie_from_dict(human_coding_sequences[0].get_codon_frequencies(), "Human", "FUM")
+
     # Plot human
     for cds in human_coding_sequences:
         plot_all_charts_for_cds(plt, cds, "Human", cds.get_gene_name())
@@ -115,19 +134,27 @@ if __name__ == '__main__':
         plot_all_charts_for_cds(plt, cds, "Yersinia pestis", cds.get_gene_name())
 
     # Plot HIV-1
-    for cds in hiv1_coding_sequences:
-        plot_all_charts_for_cds(plt, cds, "HIV-1", cds.get_gene_name())
+    env_hiv1 = get_env_cds(hiv1_coding_sequences)
+    viral_hiv1 = combine_cds_sequences(hiv1_coding_sequences)
+    plot_all_charts_for_cds(plt, env_hiv1, "HIV-1", env_hiv1.get_gene_name())
+    plot_all_charts_for_cds(plt, viral_hiv1, "HIV-1", "Viral")
 
     # Plot HIV-2
-    for cds in hiv2_coding_sequences:
-        plot_all_charts_for_cds(plt, cds, "HIV-2", cds.get_gene_name())
+    env_hiv2 = get_env_cds(hiv2_coding_sequences)
+    viral_hiv2 = combine_cds_sequences(hiv2_coding_sequences)
+    plot_all_charts_for_cds(plt, env_hiv2, "HIV-2", env_hiv2.get_gene_name())
+    plot_all_charts_for_cds(plt, viral_hiv2, "HIV-2", "Viral")
 
     # Plot SIV-1
-    for cds in siv1_coding_sequences:
-        plot_all_charts_for_cds(plt, cds, "SIV-1", cds.get_gene_name())
+    env_siv1 = get_env_cds(siv1_coding_sequences)
+    viral_siv1 = combine_cds_sequences(siv1_coding_sequences)
+    plot_all_charts_for_cds(plt, env_siv1, "SIV-1", env_siv1.get_gene_name())
+    plot_all_charts_for_cds(plt, viral_siv1, "SIV-1", "Viral")
 
     # Plot SIV-2
-    for cds in siv2_coding_sequences:
-        plot_all_charts_for_cds(plt, cds, "SIV-2", cds.get_gene_name())
+    env_siv2 = get_env_cds(siv2_coding_sequences)
+    viral_siv2 = combine_cds_sequences(siv2_coding_sequences)
+    plot_all_charts_for_cds(plt, env_siv2, "SIV-2", env_siv2.get_gene_name())
+    plot_all_charts_for_cds(plt, viral_siv2, "SIV-2", "Viral")
 
 

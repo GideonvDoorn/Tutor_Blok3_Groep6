@@ -27,16 +27,17 @@ class CDS:
         except ValueError:
 
             try:
-                gene_index = self.__header.index("[locus_tag=")
-                end_index = len("[locus_tag=")
+                gene_index = self.__header.index("[protein=")
+                end_index = len("[protein=")
             except ValueError:
                 return "Fumerate Hydratase"
         header_cut = self.__header[gene_index :]
 
         return header_cut[end_index : header_cut.index("]")]
 
+
     def is_env_protein(self):
-        return "[gene=env]" in self.__header
+        return "env" in self.__header
 
     def get_codons(self):
 
